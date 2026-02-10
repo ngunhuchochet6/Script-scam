@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Hub Pro - OpenRouter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .markdown-body pre { background: #1a1a1a; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.5rem 0; border: 1px solid #333; }
+        .markdown-body code { color: #f472b6; font-family: monospace; }
+        .chat-height { height: calc(100vh - 280px); }
+        .model-active { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); color: #60a5fa; }
+    </style>
+</head>
+<body class="bg-[#0b0e14] text-gray-200">
+
+    <div class="max-w-6xl mx-auto px-4 py-6">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-2">
+                <div class="bg-blue-600 p-2 rounded-lg"><i data-lucide="cpu" class="text-white w-5 h-5"></i></div>
+                <h1 class="text-xl font-bold tracking-tight text-white">AI HUB <span class="text-blue-500 text-sm font-normal ml-1 italic">v2.0</span></h1>
+            </div>
+            <div id="status" class="text-[10px] uppercase tracking-widest text-gray-500 bg-gray-800/50 px-3 py-1 rounded-full border border-gray-700">Ready</div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <aside class="lg:col-span-1 space-y-4">
+                <div class="bg-[#161b22] p-5 rounded-2xl border border-gray-800 shadow-xl">
+                    <h2 class="text-xs font-bold mb-4 text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="key" class="w-3 h-3"></i> Cấu hình API
+                    </h2>
+                    <input type="password" id="apiKey" oninput="saveKey()" placeholder="OpenRouter API Key..." 
+                        class="w-full bg-gray-900 border border-gray-700 p-3 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all mb-2">
+                    <p class="text-[10px] text-gray-500 italic">* Tự động lưu vào trình duyệt của bạn.</p>
+                    
+                    <h2 class="text-xs font-bold mt-8 mb-4 text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="layers" class="w-3 h-3"></i> Chọn Model
+                    </h2>
+                    <div class="space-y-2" id="modelList">
+                        <button onclick="selectModel('google/gemini-pro-1.5', this)" class="model-btn w-full text-left px-4 py-2.5 rounded-xl text-sm border border-gray-800 hover:bg-gray-800 transition-all flex items-center justify-between group">
+                            Gemini Pro 1.5 <i data-lucide="zap" class="w-3 h-3 opacity-0 group-hover:opacity-100"></i>
+                        </button>
+                        <button onclick="selectModel('google/gemini-flash-1.5', this)" class="model-btn w-full text-left px-4 py-2.5 rounded-xl text-sm border border-gray-800 hover:bg-gray-800 transition-all flex items-center justify-between group">
+                            Gemini 3 Flash <i data-lucide="zap" class="w-3 h-3 opacity-0 group-hover:opacity-100"></i>
+                        </button>
+                        <button onclick="selectModel('anthropic/claude-3.5-sonnet', this)" class="model-btn w-full text-left px-4 py-2.5 rounded-xl text-sm border border-gray-800 hover:bg-gray-800 transition-all flex items-center justify-between group">
+                            Claude 3.5 Sonnet <i data-lucide="sparkles" class="w-3 h-3 opacity-0 group-hover:opacity-100 text-orange-400"></i>
+                        </button>
+                        <button onclick="toggleCustom(true, this)" class="model-btn w-full text-left px-4 py-2.5 rounded-xl text-sm border border-gray-800 hover:bg-gray-800 transition-all">
+                            Tùy chỉnh model khác...
+                        </button>
+                    </div>
+
+                    <div id="customArea" class="hidden mt-3 animate-pulse">
+                        <input type="text" id="customModelName" placeholder="ID: anthropic/claude-3-opus" 
+                            class="w-full bg-gray-900 border border-gray-700 p-3 rounded-xl text-sm outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <button onclick="clearHistory()" class="w-full py-2 text-xs text-gray-500 hover:text-red-400 transition-colors flex items-center justify-center gap-2">
+                    <i data-lucide="trash-2" class="w-3 h-3"></i> Xóa lịch sử chat
+                </button>
+            </aside>
+
+            <main class="lg:col-span-3 flex flex-col bg-[#161b22] rounded-2xl border border-gray-800 overflow-hidden shadow-2xl relative">
+                <div id="chatLog" class="chat-height overflow-y-auto p-6 space-y-6">
+                    </div>
+
+                <div class="p-4 bg-[#0d1117] border-t border-gray-800">
+                    <div class="flex items-end gap-2 bg-[#161b22] rounded-2xl p-2 border border-gray-700 focus-within:border-blue-500 transition-all">
+                        <textarea id="userInput" rows="1" placeholder="Nhập tin nhắn..." 
+                            class="flex-1 bg-transparent p-2 outline-none resize-none text-sm min-h-[44px] max-h-[200px]"></textarea>
+                        <button onclick="sendMessage()" class="p-3 bg-blue-600 hover:bg-blue-500 rounded-xl transition-all shadow-lg shadow-blue-900/20">
+                            <i data-lucide="send-horizontal" class="w-5 h-5 text-white"></i>
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        let currentModel = 'google/gemini-pro-1.5';
+        let chatHistory = [];
+
+        // LOAD DỮ LIỆU KHI MỞ TRANG
+        window.onload = () => {
+            const savedKey = localStorage.getItem('openrouter_key');
+            if (savedKey) document.getElementById('apiKey').value = savedKey;
+            
+            // Active mặc định nút Gemini Pro
+            const firstBtn = document.querySelector('.model-btn');
+            firstBtn.classList.add('model-active');
+            
+            appendMessage('assistant', 'Hệ thống đã sẵn sàng. **Claude 3.5 Sonnet** và **Gemini** đã được cấu hình!');
+        };
+
+        function saveKey() {
+            localStorage.setItem('openrouter_key', document.getElementById('apiKey').value);
+        }
+
+        function selectModel(modelId, btn) {
+            currentModel = modelId;
+            document.getElementById('customArea').classList.add('hidden');
+            updateUI(btn);
+        }
+
+        function toggleCustom(show, btn) {
+            document.getElementById('customArea').classList.remove('hidden');
+            currentModel = 'custom';
+            updateUI(btn);
+        }
+
+        function updateUI(activeBtn) {
+            document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('model-active'));
+            activeBtn.classList.add('model-active');
+        }
+
+        function clearHistory() {
+            chatHistory = [];
+            document.getElementById('chatLog').innerHTML = '';
+            appendMessage('assistant', 'Đã xóa lịch sử trò chuyện.');
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const apiKey = document.getElementById('apiKey').value;
+            const text = input.value.trim();
+            const modelToUse = currentModel === 'custom' ? document.getElementById('customModelName').value : currentModel;
+
+            if(!text || !apiKey) return alert("Vui lòng nhập đủ tin nhắn và API Key!");
+
+            appendMessage('user', text);
+            input.value = '';
+            input.style.height = 'auto';
+
+            const loadingId = appendMessage('assistant', '<span class="animate-pulse">Đang suy nghĩ...</span>');
+            chatHistory.push({ role: "user", content: text });
+
+            try {
+                const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${apiKey}`,
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": window.location.href,
+                        "X-Title": "AI Hub v2"
+                    },
+                    body: JSON.stringify({ "model": modelToUse, "messages": chatHistory })
+                });
+
+                const data = await res.json();
+                document.getElementById(loadingId).remove();
+
+                if (data.choices?.[0]) {
+                    const aiText = data.choices[0].message.content;
+                    appendMessage('assistant', aiText);
+                    chatHistory.push({ role: "assistant", content: aiText });
+                } else {
+                    appendMessage('assistant', "Lỗi: " + (data.error?.message || "API không phản hồi"));
+                }
+            } catch (err) {
+                document.getElementById(loadingId).remove();
+                appendMessage('assistant', "Lỗi kết nối nghiêm trọng!");
+            }
+        }
+
+        function appendMessage(role, content) {
+            const id = 'm-' + Date.now();
+            const log = document.getElementById('chatLog');
+            const isUser = role === 'user';
+            
+            const html = `
+                <div class="flex gap-4 ${isUser ? 'justify-end' : 'justify-start'}" id="${id}">
+                    ${!isUser ? '<div class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center flex-shrink-0 border border-blue-500/30"><i data-lucide="bot" class="w-4 h-4"></i></div>' : ''}
+                    <div class="${isUser ? 'bg-blue-600 text-white rounded-2xl rounded-tr-none' : 'bg-gray-800/50 border border-gray-700 rounded-2xl rounded-tl-none'} p-4 max-w-[85%] text-sm markdown-body">
+                        ${isUser ? content : marked.parse(content)}
+                    </div>
+                </div>
+            `;
+            log.insertAdjacentHTML('beforeend', html);
+            lucide.createIcons();
+            log.scrollTop = log.scrollHeight;
+            return id;
+        }
+
+        // Auto resize textarea
+        document.getElementById('userInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        document.getElementById('userInput').addEventListener('keydown', e => {
+            if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+        });
+    </script>
+</body>
+</html>
